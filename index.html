@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Intel Nexus | Pathao Audit Terminal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+        body { background: #F8FAFC; font-family: 'Inter', sans-serif; color: #1E293B; }
+        .metabase-sidebar { background: #1F2937; color: white; width: 60px; transition: 0.3s; }
+        .metabase-sidebar:hover { width: 200px; }
+        .nav-link { display: flex; align-items: center; padding: 15px; overflow: hidden; white-space: nowrap; transition: 0.2s; }
+        .nav-link:hover { background: #374151; }
+        .card { background: white; border: 1px solid #E2E8F0; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+    </style>
+</head>
+<body class="flex h-screen overflow-hidden">
+
+    <aside class="metabase-sidebar flex flex-col items-start py-6 z-50 shadow-2xl">
+        <div class="nav-link w-full text-blue-400 mb-10"><i class="fas fa-layer-group text-xl mr-4"></i><span class="font-bold">NEXUS CORE</span></div>
+        <div class="nav-link w-full cursor-pointer" onclick="fetchData()"><i class="fas fa-sync text-xl mr-4"></i><span>Sync Data</span></div>
+        <div class="nav-link w-full cursor-pointer" onclick="toggleSettings()"><i class="fas fa-cog text-xl mr-4"></i><span>API Settings</span></div>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto p-6 md:p-10 relative">
+        
+        <div id="settingsBox" class="hidden absolute top-20 left-10 right-10 bg-white border-2 border-blue-500 p-8 rounded-2xl z-[100] shadow-2xl max-w-2xl mx-auto">
+            <h3 class="text-xl font-black mb-4">⚙️ DATA SOURCE CONFIGURATION</h3>
+            <p class="text-xs text-gray-500 mb-4 uppercase font-bold tracking-widest">Input your Google Apps Script URL below to link your data.</p>
+            <input type="text" id="apiInput" placeholder="https://script.google.com/macros/s/..." class="w-full p-4 bg-gray-50 border rounded-xl mb-4 text-sm font-mono focus:ring-2 focus:ring-blue-400 outline-none">
+            <div class="flex gap-4">
+                <button onclick="saveAPI()" class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold text-xs uppercase tracking-widest hover:bg-blue-700 transition">Save Link</button>
+                <button onclick="toggleSettings()" class="text-gray-400 font-bold text-xs uppercase tracking-widest">Close</button>
+            </div>
+        </div>
+
+        <header class="mb-10">
+            <h1 class="text-3xl font-black text-gray-800 tracking-tighter uppercase italic">Pathao <span class="text-blue-600">Audit Intelligence</span></h1>
+            <p class="text-xs font-bold text-gray-400 uppercase tracking-widest mt-1">Live Intelligence Feed // Enterprise Portal</p>
+        </header>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <div class="card p-8"><p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Total Volume</p><h2 id="totalCount" class="text-5xl font-black text-gray-800">0</h2></div>
+            <div class="card p-8 border-l-4 border-red-500"><p class="text-[10px] font-bold text-red-500 uppercase tracking-widest mb-2">Scan Missed</p><h2 id="missCount" class="text-5xl font-black text-red-600">0</h2></div>
+            <div class="card p-8"><p class="text-[10px] font-bold text-green-500 uppercase tracking-widest mb-2">Integrity</p><h2 id="integrity" class="text-5xl font-black text-green-500">100%</h2></div>
+        </div>
+
+        <div class="card overflow-hidden">
+            <div class="p-4 bg-gray-50 border-b flex justify-between items-center">
+                <input type="text" id="searchBox" onkeyup="filterHub()" placeholder="Quick Hub Search..." class="bg-white border px-4 py-2 rounded-lg text-sm w-full max-w-xs outline-none focus:border-blue-500 transition">
+                <div class="text-[10px] font-bold text-gray-400 uppercase tracking-widest px-4">Live Database Stream</div>
+            </div>
+            <div class="overflow-x-auto h-[600px]">
+                <table class="w-full text-left" id="dataTable">
+                    <thead class="sticky top-0 bg-white border-b shadow-sm">
+                        <tr class="text-[10px] text-gray-400 uppercase font-black tracking-widest">
+                            <th class="p-6">Identification</th>
+                            <th class="p-6">Location</th>
+                            <th class="p-6 text-center">Status</th>
+                            <th class="p-6">Key</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 text-sm font-medium text-gray-600">
+                        <tr id="loadingRow"><td colspan="4" class="p-40 text-center text-gray-400 italic">Please Configure API Link in Settings <i class="fas fa-arrow-left ml-2"></i></td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // 💾 AUTO-LOAD API FROM STORAGE
+        window.onload = () => {
+            const savedLink = localStorage.getItem('nexus_api');
+            if(savedLink) {
+                document.getElementById('apiInput').value = savedLink;
+                fetchData();
+            } else {
+                toggleSettings();
+            }
+        };
+
+        function toggleSettings() { document.getElementById('settingsBox').classList.toggle('hidden'); }
+
+        function saveAPI() {
+            const link = document.getElementById('apiInput').value;
+            if(link.includes('script.google.com')) {
+                localStorage.setItem('nexus_api', link);
+                alert("API Key Saved Successfully!");
+                toggleSettings();
+                fetchData();
+            } else { alert("Invalid Google Script URL!"); }
+        }
+
+        async function fetchData() {
+            const SCRIPT_URL = localStorage.getItem('nexus_api');
+            if(!SCRIPT_URL) return;
+
+            const row = document.getElementById('loadingRow');
+            row.innerHTML = `<td colspan="4" class="p-40 text-center text-blue-600 animate-pulse font-bold tracking-widest">SYNCHRONIZING SECURE FEED...</td>`;
+            
+            try {
+                const res = await fetch(SCRIPT_URL);
+                const data = await res.json();
+                renderTable(data);
+            } catch (e) {
+                row.innerHTML = `<td colspan="4" class="p-40 text-center text-red-500 font-bold uppercase">Critical Failure: API Not Reachable</td>`;
+            }
+        }
+
+        function renderTable(data) {
+            const tbody = document.querySelector('#dataTable tbody');
+            tbody.innerHTML = '';
+            let missed = 0;
+            data.forEach(item => {
+                const isMissed = String(item.status || "").toLowerCase().includes('miss');
+                if(isMissed) missed++;
+                tbody.innerHTML += `
+                    <tr class="hover:bg-blue-50 transition">
+                        <td class="p-6 font-bold text-gray-900">${item.consignmentId || '---'}</td>
+                        <td class="p-6 text-gray-500 italic">${item.hubName || '---'}</td>
+                        <td class="p-6 text-center">
+                            <span class="px-3 py-1 rounded text-[10px] font-black border ${isMissed ? 'bg-red-50 text-red-600 border-red-200' : 'bg-green-50 text-green-600 border-green-200'}">
+                                ${isMissed ? 'ANOMALY' : 'VERIFIED'}
+                            </span>
+                        </td>
+                        <td class="p-6 text-gray-400 font-mono text-[11px]">${item.merchantId || '---'}</td>
+                    </tr>`;
+            });
+            document.getElementById('totalCount').innerText = data.length;
+            document.getElementById('missCount').innerText = missed;
+            document.getElementById('integrity').innerText = data.length > 0 ? ((data.length - missed) / data.length * 100).toFixed(1) + '%' : '100%';
+        }
+
+        function filterHub() {
+            const val = document.getElementById('searchBox').value.toUpperCase();
+            const rows = document.querySelector('#dataTable tbody').rows;
+            for (let row of rows) {
+                const text = row.cells[1].innerText.toUpperCase();
+                row.style.display = text.includes(val) ? '' : 'none';
+            }
+        }
+    </script>
+</body>
+</html>
